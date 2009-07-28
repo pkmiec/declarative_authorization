@@ -159,7 +159,7 @@ module Authorization
       end
 
       def append_role (role, options = {}) # :nodoc:
-        @roles << role unless @roles.include? role
+        @roles << role unless @role_titles.key?(role)
         @role_titles[role] = options[:title] if options[:title]
         @role_descriptions[role] = options[:description] if options[:description]
       end
@@ -170,7 +170,7 @@ module Authorization
       #     has_permissions_on ...
       #   end
       #
-      def role (role, options = {}, &block)
+      def role (role, options = {})
         append_role role, options
         @current_role = role
         yield
@@ -222,16 +222,15 @@ module Authorization
       #   Join operator to logically connect the constraint statements inside
       #   of the has_permission_on block.  May be :+and+ or :+or+.  Defaults to :+or+.
       #
-      def has_permission_on (context, options = {}, &block)
+      def has_permission_on (context, options = {}) 
         raise DSLError, "has_permission_on only allowed in role blocks" if @current_role.nil?
-        options = {:to => [], :join_by => :or}.merge(options)
         
-        privs = options[:to] 
+        privs = options[:to] || []
         privs = [privs] unless privs.is_a?(Array)
         raise DSLError, "has_permission_on either needs a block or :to option" if !block_given? and privs.empty?
 
         file, line = file_and_line_number_from_call_stack
-        rule = AuthorizationRule.new(@current_role, privs, context, options[:join_by],
+        rule = AuthorizationRule.new(@current_role, privs, context, options[:join_by] || :or,
                    :source_file => file, :source_line => line)
         @auth_rules << rule
         if block_given?
@@ -420,9 +419,9 @@ module Authorization
           if value.is_a?(Hash)
             parse_attribute_conditions_hash!(value)
           elsif !value.is_a?(Array)
-            merge_hash[key] = [:is, lambda { value }]
+            merge_hash[key] = [:is, value ]
           elsif value.is_a?(Array) and !value[0].is_a?(Symbol)
-            merge_hash[key] = [:is_in, lambda { value }]
+            merge_hash[key] = [:is_in, value ]
           end
         end
         hash.merge!(merge_hash)

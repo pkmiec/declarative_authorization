@@ -268,8 +268,12 @@ module Authorization
       end
       
       def evaluate (value_block)
-        # TODO cache?
-        instance_eval(&value_block)
+        if value_block.is_a? Proc
+          # TODO cache?
+          instance_eval(&value_block)
+        else
+          value_block
+        end
       end
     end
     
