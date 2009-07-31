@@ -297,10 +297,12 @@ module Authorization
     
     def flatten_roles (roles)
       # TODO caching?
-      flattened_roles = roles.clone.to_a
-      flattened_roles.each do |role|
-        flattened_roles.concat(@role_hierarchy[role]).uniq! if @role_hierarchy[role]
+      flattened_roles = Set.new 
+      roles.each do |role|
+        flattened_roles.add(role)
+        flattened_roles.merge(@role_hierarchy[role]) if @role_hierarchy[role]
       end
+      flattened_roles
     end
     
     # Returns the privilege hierarchy flattened for given privileges in context.
@@ -318,10 +320,11 @@ module Authorization
       #flattened_privileges = privileges.collect {|p| p.to_s.sub(context_regex, '')}
       flattened_privileges = privileges.clone #collect {|p| p.to_s.end_with?(context.to_s) ?
                                               #       p : [p, "#{p}_#{context}".to_sym] }.flatten
-      flattened_privileges.each do |priv|
-        flattened_privileges.concat(@rev_priv_hierarchy[[priv, nil]]).uniq! if @rev_priv_hierarchy[[priv, nil]]
-        flattened_privileges.concat(@rev_priv_hierarchy[[priv, context]]).uniq! if @rev_priv_hierarchy[[priv, context]]
+      privileges.each do |priv|
+        flattened_privileges.concat(@rev_priv_hierarchy[[priv, nil]]) if @rev_priv_hierarchy[[priv, nil]]
+        flattened_privileges.concat(@rev_priv_hierarchy[[priv, context]]) if @rev_priv_hierarchy[[priv, context]]
       end
+      flattened_privileges.uniq
     end
     
     def matching_auth_rules (roles, privileges, context)
@@ -359,7 +362,6 @@ module Authorization
     end
     
     def matches? (roles, privs, context = nil)
-      roles = [roles] unless roles.is_a?(Array)
       @contexts.include?(context) and roles.include?(@role) and 
         not (@privileges & privs).empty?
     end
